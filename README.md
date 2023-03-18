@@ -6,9 +6,13 @@ The data has 3 columns which are "textID", "text", and "sentiment" and 3534 rows
 
 ## Method
 The main process is composed of 
+
 1.) split the data into train , valid, test data set. And turn them into DataDict form. 
+
 2.) processing the data ( encoding by tokenzing the data and pad all the samples to have the same length) 
+
 3.) load pre-trained BERT model, specify num_labels = 3, and fine-tuning the model with trainer API
+
 4.) test the fine-tuning model on the test set. 
 
 ## Result
