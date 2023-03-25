@@ -1,4 +1,4 @@
-# Sentiment analysis with multi-labels classifictation
+# Sentiment analysis with multi-labels classification
 This project uses BERT from hugging face transformers library to analyze whether each tweet is neutral, positive, or negative.
 
 ## Data
