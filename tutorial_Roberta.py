@@ -7,9 +7,9 @@ from transformers import RobertaTokenizer, RobertaForSequenceClassification, Tra
 from datasets import load_from_disk, load_dataset
 
 # ----- import data set in DatasetDict format
-df_train= load_dataset("csv", data_files="/Users/ruochentan1/PycharmProjects/Sentiment/train.csv",split = "train")
-df_test = load_dataset("csv", data_files="/Users/ruochentan1/PycharmProjects/Sentiment/test.csv", split = "train")
-df_valid = load_dataset("csv", data_files= "/Users/ruochentan1/PycharmProjects/Sentiment/valid.csv", split = "train")
+df_train= load_dataset("csv", data_files="train.csv",split = "train")
+df_test = load_dataset("csv", data_files="test.csv", split = "train")
+df_valid = load_dataset("csv", data_files= "valid.csv", split = "train")
 print(df_train)
 
 # ------- encoding with Roberta Tokenizer
@@ -37,7 +37,7 @@ data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
 # ------- train the model
 training_args = TrainingArguments(
-    output_dir='/Users/ruochentan1/PycharmProjects/Sentiment',          # output directory
+    output_dir='/path',          # output directory
     num_train_epochs=3,              # total number of training epochs
     per_device_train_batch_size=64,  # batch size per device during training
     per_device_eval_batch_size=64,   # batch size for evaluation
@@ -78,7 +78,7 @@ f1.compute(predictions=prediction, references=original, average='weighted') # 0.
 
 # ----- compare with the original result
 
-df = pd.read_csv("/Users/ruochentan1/PycharmProjects/Sentiment/test.csv")
+df = pd.read_csv("test.csv")
 df["tuned_sentiment"] = prediction
 def convert(x):
     if x == 0:
@@ -90,7 +90,7 @@ def convert(x):
 
 df[["sentiment", "tuned_sentiment"]] = df[["sentiment", "tuned_sentiment"]].applymap(convert)
 
-result = df.to_csv("/Users/ruochentan1/PycharmProjects/Sentiment/result.csv")
+result = df.to_csv("result.csv") # save the data 
 
 
 
