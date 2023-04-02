@@ -1,33 +1,10 @@
-
 # ---------- library
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import evaluate
-from transformers import BertTokenizer, BertForSequenceClassification, TrainingArguments, Trainer, DataCollatorWithPadding
-from datasets import load_dataset
-
-
-#--------- split data set and data preprocessing
-df = pd.read_csv("/Users/ruochentan1/Downloads/test.csv")
-def convert(row):
-    if row == "neutral":
-        result = '0'
-    elif row == "positive":
-        result = '2'
-    else:
-        result = '1'
-    return result
-
-df["sentiment"] = df["sentiment"].apply(lambda x: convert(x))
-train, test = train_test_split(df, test_size=0.2, random_state=123)
-train,valid = train_test_split(train,test_size = 0.25, random_state = 123 )
-
-
-train.to_csv("/Users/ruochentan1/PycharmProjects/Sentiment/train.csv", index=False)
-test.to_csv("/Users/ruochentan1/PycharmProjects/Sentiment/test.csv",index =False)
-valid.to_csv("/Users/ruochentan1/PycharmProjects/Sentiment/valid.csv",index =False)
-
+from transformers import RobertaTokenizer, RobertaForSequenceClassification, TrainingArguments, Trainer
+from datasets import load_from_disk, load_dataset
 
 # ----- import data set in DatasetDict format
 df_train= load_dataset("csv", data_files="/Users/ruochentan1/PycharmProjects/Sentiment/train.csv",split = "train")
@@ -35,8 +12,8 @@ df_test = load_dataset("csv", data_files="/Users/ruochentan1/PycharmProjects/Sen
 df_valid = load_dataset("csv", data_files= "/Users/ruochentan1/PycharmProjects/Sentiment/valid.csv", split = "train")
 print(df_train)
 
-# ------- encoding with Bert tokenizer
-tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
+# ------- encoding with Roberta Tokenizer
+tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
 train_tokenized = df_train.map(lambda batch: tokenizer(batch['text'], padding='max_length', truncation=True, max_length=32))
 test_tokenized = df_test.map(lambda batch: tokenizer(batch['text'], padding='max_length', truncation=True, max_length=32))
 valid_tokenized = df_valid.map(lambda batch: tokenizer(batch["text"], padding='max_length', truncation=True, max_length = 32))
@@ -45,22 +22,20 @@ train_tokenized = train_tokenized.rename_column("sentiment", "labels")
 test_tokenized = test_tokenized.rename_column("sentiment", "labels")
 valid_tokenized = valid_tokenized.rename_column("sentiment", "labels")
 
-train_tokenized.set_format("torch", columns=["input_ids", "token_type_ids", "attention_mask", "labels"])
-test_tokenized.set_format("torch", columns=["input_ids", "token_type_ids", "attention_mask", "labels"])
-valid_tokenized.set_format("torch", columns=["input_ids", "token_type_ids", "attention_mask", "labels"])
+train_tokenized.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
+test_tokenized.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
+valid_tokenized.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
 
 
-train_tokenized.save_to_disk("train_tokenized")
-valid_tokenized.save_to_disk("valid_tokenized")
-test_tokenized.save_to_disk("test_tokenized")
-
-model = BertForSequenceClassification.from_pretrained("bert-base-cased", num_labels=3)
+# -------- load model and tokenizer
+model = RobertaForSequenceClassification.from_pretrained("roberta-base", num_labels=3)
+tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
 
 # dynmaic padding
 from transformers import DataCollatorWithPadding
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-
+# ------- train the model
 training_args = TrainingArguments(
     output_dir='/Users/ruochentan1/PycharmProjects/Sentiment',          # output directory
     num_train_epochs=3,              # total number of training epochs
@@ -73,6 +48,7 @@ training_args = TrainingArguments(
 )
 
 metric = evaluate.load("accuracy")
+
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     predictions = np.argmax(logits, axis=-1)
@@ -89,26 +65,7 @@ trainer = Trainer(
 )
 
 trainer.train()
-
-#----------- save the fine-tuned model
-from pytorch_transformers import WEIGHTS_NAME, CONFIG_NAME
-output_dir = "/Users/ruochentan1/PycharmProjects/sentiment"
-model_to_save = model.module if hasattr(model, 'module') else model
-
-import os
-import torch
-output_model_file = os.path.join(output_dir, WEIGHTS_NAME)
-output_config_file = os.path.join(output_dir, CONFIG_NAME)
-
-torch.save(model_to_save.state_dict(), output_model_file)
-model_to_save.config.to_json_file(output_config_file)
-tokenizer.save_vocabulary(output_dir)
-
-# --------- reload the model
-output_dir = "/Users/ruochentan1/PycharmProjects/sentiment"
-model = BertForSequenceClassification.from_pretrained(output_dir)
-tokenizer = BertTokenizer.from_pretrained(output_dir)
-
+trainer.evaluate() # get results from validation data set
 
 # ---------  get prediction for test data set
 pred = trainer.predict(test_tokenized) # get prediction output
@@ -116,5 +73,24 @@ prediction = pred[0].argmax(axis=1) # transform logits to compare with the origi
 original = pred[1]
 accuracy = evaluate.load('accuracy')
 f1 = evaluate.load('f1')
-accuracy.compute(predictions=prediction, references=original) # 0.744
-f1.compute(predictions=prediction, references=original, average='weighted') # 0.744
+accuracy.compute(predictions=prediction, references=original) #0.757
+f1.compute(predictions=prediction, references=original, average='weighted') # 0.755
+
+# ----- compare with the original result
+
+df = pd.read_csv("/Users/ruochentan1/PycharmProjects/Sentiment/test.csv")
+df["tuned_sentiment"] = prediction
+def convert(x):
+    if x == 0:
+        return 'neutral'
+    elif x == 2:
+        return'positive'
+    else:
+        return "negative"
+
+df[["sentiment", "tuned_sentiment"]] = df[["sentiment", "tuned_sentiment"]].applymap(convert)
+
+result = df.to_csv("/Users/ruochentan1/PycharmProjects/Sentiment/result.csv")
+
+
+
