@@ -9,7 +9,7 @@ from datasets import load_dataset
 
 
 #--------- split data set and data preprocessing
-df = pd.read_csv("/Users/ruochentan1/Downloads/test.csv")
+df = pd.read_csv("test.csv")
 def convert(row):
     if row == "neutral":
         result = '0'
@@ -24,15 +24,15 @@ train, test = train_test_split(df, test_size=0.2, random_state=123)
 train,valid = train_test_split(train,test_size = 0.25, random_state = 123 )
 
 
-train.to_csv("/Users/ruochentan1/PycharmProjects/Sentiment/train.csv", index=False)
-test.to_csv("/Users/ruochentan1/PycharmProjects/Sentiment/test.csv",index =False)
-valid.to_csv("/Users/ruochentan1/PycharmProjects/Sentiment/valid.csv",index =False)
+train.to_csv("train.csv", index=False)
+test.to_csv("test.csv",index =False)
+valid.to_csv("valid.csv",index =False)
 
 
 # ----- import data set in DatasetDict format
-df_train= load_dataset("csv", data_files="/Users/ruochentan1/PycharmProjects/Sentiment/train.csv",split = "train")
-df_test = load_dataset("csv", data_files="/Users/ruochentan1/PycharmProjects/Sentiment/test.csv", split = "train")
-df_valid = load_dataset("csv", data_files= "/Users/ruochentan1/PycharmProjects/Sentiment/valid.csv", split = "train")
+df_train= load_dataset("csv", data_files="train.csv",split = "train")
+df_test = load_dataset("csv", data_files="test.csv", split = "train")
+df_valid = load_dataset("csv", data_files= "valid.csv", split = "train")
 print(df_train)
 
 # ------- encoding with Bert tokenizer
@@ -62,13 +62,13 @@ data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
 
 training_args = TrainingArguments(
-    output_dir='/Users/ruochentan1/PycharmProjects/Sentiment',          # output directory
+    output_dir='path/Sentiment',          # output directory
     num_train_epochs=3,              # total number of training epochs
-    per_device_train_batch_size=64,  # batch size per device during training
-    per_device_eval_batch_size=64,   # batch size for evaluation
-    warmup_steps=0,                # number of warmup steps for learning rate scheduler
-    learning_rate=5e-5,               # learning rate
-    logging_dir='./logs',            # directory for storing logs
+    per_device_train_batch_size=64,  
+    per_device_eval_batch_size=64,   
+    warmup_steps=0,                
+    learning_rate=5e-5,              
+    logging_dir='./logs',            
     logging_steps=1000,
 )
 
@@ -92,7 +92,7 @@ trainer.train()
 
 #----------- save the fine-tuned model
 from pytorch_transformers import WEIGHTS_NAME, CONFIG_NAME
-output_dir = "/Users/ruochentan1/PycharmProjects/sentiment"
+output_dir = "path/sentiment"
 model_to_save = model.module if hasattr(model, 'module') else model
 
 import os
@@ -105,7 +105,7 @@ model_to_save.config.to_json_file(output_config_file)
 tokenizer.save_vocabulary(output_dir)
 
 # --------- reload the model
-output_dir = "/Users/ruochentan1/PycharmProjects/sentiment"
+output_dir = "path/sentiment"
 model = BertForSequenceClassification.from_pretrained(output_dir)
 tokenizer = BertTokenizer.from_pretrained(output_dir)
 
